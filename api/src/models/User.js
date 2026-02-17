@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    vFullName: {
+      type: String,
+      required: true,
+    },
   },
   { timestamps: true },
 );
