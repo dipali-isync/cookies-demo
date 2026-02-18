@@ -43,14 +43,14 @@ export const login = async (req, res) => {
       httpOnly: true,
       secure: false, // can't use Secure on plain HTTP
       path: "/", // valid for all paths
-      maxAge: 15 * 60 * 1000,
+      maxAge: 5 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: false, // can't use Secure on plain HTTP
       path: "/", // valid for all paths
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
     });
 
     // 6. Send access token
@@ -76,24 +76,6 @@ export const refresh = async (req, res) => {
   try {
     const payload = verifyRefreshToken(token);
     const user = await User.findById(payload.id);
-
-    if (!user || !user.refreshToken.some((rt) => rt.token === token)) {
-      // Clear cookies
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-      });
-
-      // If you had set accessToken as a cookie, clear it too
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-      });
-      return res.sendStatus(403);
-    }
-
     const storedToken = await RefreshToken.findOne({
       iUserId: user._id,
       token,
@@ -120,10 +102,17 @@ export const refresh = async (req, res) => {
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 15 * 60 * 100,
+      path: "/",
+      maxAge: 5 * 60 * 1000,
     });
 
-    return res.json({ message: "Token refreshed", code: 200 });
+    return res.json({
+      message: "Token refreshed",
+      code: 200,
+      data: {
+        accessToken: newAccessToken,
+      },
+    });
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -172,7 +161,7 @@ export const register = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 15 * 60 * 1000,
+      maxAge: 5 * 60 * 1000,
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -243,9 +232,6 @@ export const getUserData = async (req, res) => {
       console.log("---------------user", user);
       return res.json({ message: "Got Data!!!!!!!", code: 200, data: user });
     } else {
-      return res.status(401).json({ message: "Access denied" });
-    }
-    if (!refreshToken) {
       return res.status(401).json({ message: "Access denied" });
     }
   } catch (error) {
